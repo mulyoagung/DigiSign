@@ -1,0 +1,33 @@
+
+> digital-signature-app@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.7 (Turbopack)
+   - Environments: .env
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./auth.ts:4:1
+Module not found: Can't resolve '@auth/prisma-adapter'
+[0m [90m 2 |[39m [36mimport[39m [33mCredentials[39m [36mfrom[39m [32m"next-auth/providers/credentials"[39m
+ [90m 3 |[39m [36mimport[39m [33mGoogle[39m [36mfrom[39m [32m"next-auth/providers/google"[39m
+[31m[1m>[22m[39m[90m 4 |[39m [36mimport[39m { [33mPrismaAdapter[39m } [36mfrom[39m [32m"@auth/prisma-adapter"[39m
+ [90m   |[39m [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 5 |[39m [36mimport[39m { [33mPrismaClient[39m } [36mfrom[39m [32m"@prisma/client"[39m
+ [90m 6 |[39m [36mimport[39m bcrypt [36mfrom[39m [32m"bcryptjs"[39m
+ [90m 7 |[39m[0m
+
+
+
+Import trace:
+  App Route:
+    ./auth.ts
+    ./app/api/auth/[...nextauth]/route.ts
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./auth.ts:4:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)

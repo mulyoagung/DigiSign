@@ -6,6 +6,8 @@ export const metadata: Metadata = {
     description: "Sign PDF documents digitally with QR codes",
 };
 
+import Provider from "@/components/SessionProvider";
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -13,7 +15,9 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en">
-            <body className="antialiased">{children}</body>
+            <body className="antialiased">
+                <Provider>{children}</Provider>
+            </body>
         </html>
     );
 }

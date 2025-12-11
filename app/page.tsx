@@ -3,14 +3,25 @@
 import React, { useState, useEffect } from 'react';
 import FileUploader from '@/components/FileUploader';
 import SignerForm from '@/components/SignerForm';
+import dynamic from 'next/dynamic';
+
+const InteractivePdfViewer = dynamic(() => import('@/components/InteractivePdfViewer'), {
+  ssr: false,
+  loading: () => <div className="h-96 w-full bg-gray-200 animate-pulse rounded-lg flex items-center justify-center text-gray-400">Loading PDF Viewer...</div>
+});
 import { generateQRCode, embedSignature } from '@/utils/signatureUtils';
-import { Download, RefreshCw, CheckCircle } from 'lucide-react';
+import { Download, RefreshCw, CheckCircle, LogIn, LayoutDashboard } from 'lucide-react';
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [signedPdfUrl, setSignedPdfUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [originalPdfUrl, setOriginalPdfUrl] = useState<string | null>(null);
+  const [qrPosition, setQrPosition] = useState<{ x: number; y: number; width?: number; height?: number } | null>(null);
 
   useEffect(() => {
     if (file) {
@@ -31,8 +42,11 @@ export default function Home() {
       const arrayBuffer = await file.arrayBuffer();
       const pdfBytes = new Uint8Array(arrayBuffer);
 
+      const docId = crypto.randomUUID();
+
       // Generate Verification URL
       const signatureData = {
+        id: docId,
         name: data.name,
         letterNumber: data.letterNumber,
         subject: data.subject,
@@ -41,17 +55,18 @@ export default function Home() {
         status: 'Valid'
       };
 
-      // In a real app, we would save this to a database and just pass the ID.
-      // For this demo, we encode the data in the URL.
       const encodedData = encodeURIComponent(JSON.stringify(signatureData));
-      const verificationUrl = `${window.location.origin}/verify?data=${encodedData}`;
+      // Include ID in the URL query params for easier lookup
+      const verificationUrl = `${window.location.origin}/verify?data=${encodedData}&id=${docId}`;
 
       const qrCodeDataUrl = await generateQRCode(verificationUrl);
 
       // Embed Signature
       const signedPdfBytes = await embedSignature(pdfBytes, qrCodeDataUrl, data.name, data.reason, {
-        x: data.x,
-        y: data.y,
+        x: qrPosition?.x,
+        y: qrPosition?.y,
+        width: qrPosition?.width,
+        height: qrPosition?.height,
         letterNumber: data.letterNumber,
         subject: data.subject
       });
@@ -60,6 +75,23 @@ export default function Home() {
       const blob = new Blob([signedPdfBytes as any], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setSignedPdfUrl(url);
+
+      // Save to server if logged in
+      if (status === 'authenticated') {
+        const formData = new FormData();
+        formData.append('file', blob, `signed_${file.name}`);
+        formData.append('fileName', file.name);
+        formData.append('signerName', data.name);
+        formData.append('id', docId);
+        if (data.letterNumber) formData.append('letterNumber', data.letterNumber);
+        if (data.subject) formData.append('subject', data.subject);
+
+        await fetch('/api/documents', {
+          method: 'POST',
+          body: formData,
+        });
+      }
+
     } catch (error) {
       console.error('Error signing PDF:', error);
       alert('Failed to sign PDF. Please try again.');
@@ -99,7 +131,39 @@ export default function Home() {
               DigiSign
             </span>
           </div>
-          <div className="text-sm text-gray-500">Secure Digital Signatures</div>
+
+          <div className="flex items-center space-x-4">
+            {status === 'authenticated' ? (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-2" />
+                  Dashboard
+                </button>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500 hidden sm:inline-block">
+                    {session.user?.name}
+                  </span>
+                  <button
+                    onClick={() => signOut()}
+                    className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => signIn()}
+                className="flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all shadow-sm"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -127,6 +191,7 @@ export default function Home() {
                 </div>
                 <p className="text-green-700 mb-4 text-sm">
                   Your document has been successfully signed and verified.
+                  {status === 'authenticated' && " A copy has been saved to your dashboard."}
                 </p>
                 <div className="flex space-x-3">
                   <a
@@ -163,18 +228,19 @@ export default function Home() {
                 </span>
               ) : null}
             </div>
-            <div className="flex-grow bg-gray-200 flex items-center justify-center relative">
+            <div className="flex-grow bg-gray-200 flex items-center justify-center relative overflow-hidden">
               {signedPdfUrl ? (
                 <iframe
                   src={`${signedPdfUrl}#toolbar=0&navpanes=0`}
                   className="w-full h-full"
                   title="Signed PDF Preview"
                 />
-              ) : originalPdfUrl ? (
-                <iframe
-                  src={`${originalPdfUrl}#toolbar=0&navpanes=0`}
-                  className="w-full h-full"
-                  title="Original PDF Preview"
+              ) : file ? (
+                <InteractivePdfViewer
+                  file={file}
+                  onPositionChange={(x, y, page, width, height) => {
+                    setQrPosition({ x, y, width, height });
+                  }}
                 />
               ) : (
                 <div className="text-center text-gray-400 p-8">

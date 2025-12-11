@@ -13,6 +13,8 @@ export const generateQRCode = async (text: string): Promise<string> => {
 export interface SignatureOptions {
     x?: number;
     y?: number;
+    width?: number;
+    height?: number;
     letterNumber?: string;
     subject?: string;
 }
@@ -23,7 +25,7 @@ export const embedSignature = async (
     signerName: string,
     reason?: string,
     options: SignatureOptions = {}
-): Promise<Uint8Array> => {
+) => {
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const pages = pdfDoc.getPages();
     const firstPage = pages[0];
@@ -34,16 +36,30 @@ export const embedSignature = async (
 
     // Increase scale for better scannability (0.5 -> 0.75 or 1.0 depending on original size)
     // Let's make it a fixed visible size, e.g., 100x100 units
-    const qrSize = 100;
-    const qrDims = qrImage.scaleToFit(qrSize, qrSize);
+    // Use provided size or default to 100
+    const qrW = options.width || 100;
+    const qrH = options.height || 100;
+    const qrDims = qrImage.scaleToFit(qrW, qrH);
 
     // Embed font
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
     // Determine Position
     // Default to bottom right if not specified
-    const qrX = options.x !== undefined ? options.x : width - qrDims.width - 20;
-    const qrY = options.y !== undefined ? options.y : 20;
+    let qrX, qrY;
+
+    if (options.x !== undefined && options.y !== undefined) {
+        // Coordinates passed are from top-left (web standard)
+        // PDF uses bottom-left (0,0)
+        // We need to flip the Y axis
+        // options.y is distance from top
+        // pdf_y = height - options.y - qr_height
+        qrX = options.x;
+        qrY = firstPage.getHeight() - options.y - qrDims.height;
+    } else {
+        qrX = width - qrDims.width - 20;
+        qrY = 20;
+    }
 
     firstPage.drawImage(qrImage, {
         x: qrX,
